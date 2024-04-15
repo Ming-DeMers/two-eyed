@@ -1,0 +1,90 @@
+---
+title: "INFO 3370 Final Project"
+format: html
+editor: visual
+---
+
+```{r}
+library(readr)
+library(haven)
+library(tidyverse)
+library(scales)
+library(dplyr)
+
+df_main <- read_sav("usa_00001.sav")
+df_main$RACE <- as.numeric(df_main$RACE)
+
+df_mod <- df_main |>
+  filter(INCWAGE > 0) |>
+  mutate(RACE = case_when(
+    RACE == 1 ~ "White",
+    RACE == 2 ~ "Black/African American",
+    RACE == 3 ~ "American Indian or Alaska Native",
+    RACE == 4 ~ "Chinese",
+    RACE == 5 ~ "Japanese",
+    RACE == 6 ~ "Other Asian or Pacific Islander"
+  )) |>
+  mutate(
+    HCOVPUB = ifelse(HCOVPUB == 1, "Without public health insurance coverage", "With public health insurance coverage"),
+    HCOVPRIV = ifelse(HCOVPRIV == 1, "Without private health insurance coverage", "With private health insurance coverage")
+  ) |>
+  group_by(RACE) |>
+  filter(!is.na(HCOVPUB), !is.na(HCOVPRIV)) |>
+  summarize(
+    private_insurance_proportion = sum(HCOVPRIV == "With private health insurance coverage") / n(),
+    public_insurance_proportion = sum(HCOVPUB == "With public health insurance coverage") / n()
+  )
+
+df_median_income <- df_main |>
+  group_by(RACE, YEAR) |>
+  filter(INCWAGE > 0) |>
+  mutate(RACE = case_when(
+    RACE == 1 ~ "White",
+    RACE == 2 ~ "Black/African American",
+    RACE == 3 ~ "American Indian or Alaska Native",
+    RACE == 4 ~ "Chinese",
+    RACE == 5 ~ "Japanese",
+    RACE == 6 ~ "Other Asian or Pacific Islander"
+  )) |>
+  summarize(median_income = median(INCWAGE, na.rm = TRUE)) 
+
+ggplot(df_median_income, aes(x = YEAR,y = median_income,color = RACE)) + 
+  geom_line() +
+  scale_y_continuous(labels = scales::dollar_format()) +
+  labs(title = "Median Income by Race Over Time",
+       x = "Year",
+       y = "Median Income",
+       color = "Race") +
+  theme_minimal()
+
+ggplot(df_mod, aes(x = RACE, y = private_insurance_proportion, fill = RACE)) +
+  geom_bar(stat = "identity") +
+  labs(title = "Proportion of Individuals with Private Health Insurance by Race",
+       x = "Race",
+       y = "Proportion",
+       fill = "Race")
+
+ggplot(df_mod, aes(x = RACE, y = public_insurance_proportion, fill = RACE)) +
+  geom_bar(stat = "identity") +
+  labs(title = "Proportion of Individuals with Public Health Insurance by Race",
+       x = "Race",
+       y = "Proportion",
+       fill = "Race")
+
+df_mod_long <- df_mod |>
+  pivot_longer(cols = c(private_insurance_proportion, public_insurance_proportion),
+               names_to = "Insurance_Type",
+               values_to = "Proportion") |>
+  mutate(Insurance_Type = ifelse(Insurance_Type == "private_insurance_proportion", "Private", "Public"))
+
+ggplot(df_mod_long, aes(x = RACE, y = Proportion, fill = Insurance_Type, label = scales::percent(Proportion))) +
+  geom_col() +
+  geom_text(position = position_stack(vjust = 0.5), color = "white") +
+  labs(title = "Health Insurance Proportions by Race",
+       x = "Race",
+       y = "Proportion",
+       fill = "Insurance Type") +
+  scale_fill_manual(values = c("Private" = "blue", "Public" = "red")) +
+  theme_minimal() +
+  theme(axis.text.x = element_text(angle = 75, hjust = 1))
+```
