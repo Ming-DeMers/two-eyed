@@ -148,8 +148,11 @@ df_mod1 <- df_main_income_class |>
     RACE == 6 ~ "Other Asian or Pacific Islander"
   )) |>
   mutate(
-    HCOVPUB = ifelse(HCOVPUB == 1, "Without public health insurance coverage", "With public health insurance coverage"),
-    HCOVPRIV = ifelse(HCOVPRIV == 1, "Without private health insurance coverage", "With private health insurance coverage")
-  )
+    HCOVPUB = ifelse(HCOVPUB == 1, 0, 1),
+    HCOVPRIV = ifelse(HCOVPRIV == 1, 0, 1)
+  ) 
+
+
+
 
 ```
