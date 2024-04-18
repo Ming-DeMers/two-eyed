@@ -129,7 +129,7 @@ library(scales)
 library(Hmisc)
 
 # Define income classes
-df_main_income_class <- df_main %>%
+df_main_income_class <- df_main |>
   mutate(income_class = case_when(
     INCWAGE <= 30000 ~ "Lower Class",
     INCWAGE > 30000 & INCWAGE <= 94000 ~ "Middle Class",
@@ -150,9 +150,16 @@ df_mod1 <- df_main_income_class |>
   mutate(
     HCOVPUB = ifelse(HCOVPUB == 1, 0, 1),
     HCOVPRIV = ifelse(HCOVPRIV == 1, 0, 1)
+  ) |>
+  mutate(insurance_type = if_else(HCOVPUB == 0 & HCOVPRIV == 1, "Private",
+                                 if_else(HCOVPUB == 1 & HCOVPRIV == 0, "Public",
+                                        if_else(HCOVPUB == 1 & HCOVPRIV == 1, "Both", NA)))
   ) 
 
-
-
+ggplot(data = subset(df_mod1, !is.na(insurance_type)), aes(x = insurance_type, fill = RACE)) +
+  geom_bar() +
+  facet_grid(rows = vars(income_class), cols = vars(RACE)) +
+  theme_minimal() +
+  theme(axis.text.x = element_text(angle = 75, hjust = 1))
 
 ```
