@@ -154,10 +154,12 @@ df_mod1 <- df_main_income_class |>
   mutate(insurance_type = if_else(HCOVPUB == 0 & HCOVPRIV == 1, "Private",
                                  if_else(HCOVPUB == 1 & HCOVPRIV == 0, "Public",
                                         if_else(HCOVPUB == 1 & HCOVPRIV == 1, "Both", NA)))
-  )
+  ) |>
+  drop_na(insurance_type) |>
+  drop_na(RACE)
 
 
-ggplot(data = subset(df_mod1, !is.na(insurance_type)), aes(x = insurance_type, fill = RACE)) +
+ggplot(data = df_mod1, aes(x = insurance_type, fill = RACE)) +
   geom_bar(position = "fill") +
   scale_y_continuous(labels = scales::percent) +
   facet_grid(rows = vars(income_class)) +
@@ -168,5 +170,4 @@ ggplot(data = subset(df_mod1, !is.na(insurance_type)), aes(x = insurance_type, f
     y = "Percentage",
     fill = "Race"
   )
-
 ```
