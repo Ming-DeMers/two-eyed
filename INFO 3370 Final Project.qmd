@@ -114,6 +114,7 @@ ggplot(df_mod_long, aes(x = RACE, y = Proportion, fill = Insurance_Type, label =
   theme_minimal() +
   theme(axis.text.x = element_text(angle = 75, hjust = 1))
 ```
+
 ```{r}
 df_main |>
   select(PERWT) |>
@@ -121,4 +122,34 @@ df_main |>
 
 ```
 
+```{r}
+library(dplyr)
+library(ggplot2)
+library(scales)
+library(Hmisc)
 
+# Define income classes
+df_main_income_class <- df_main %>%
+  mutate(income_class = case_when(
+    INCWAGE <= 30000 ~ "Lower Class",
+    INCWAGE > 30000 & INCWAGE <= 94000 ~ "Middle Class",
+    INCWAGE > 94000 ~ "Upper Class",
+    TRUE ~ "Unknown"
+  ))
+
+df_mod1 <- df_main_income_class |>
+  filter(INCWAGE > 0, YEAR == 2022) |>
+  mutate(RACE = case_when(
+    RACE == 1 ~ "White",
+    RACE == 2 ~ "Black/African American",
+    RACE == 3 ~ "American Indian or Alaska Native",
+    RACE == 4 ~ "Chinese",
+    RACE == 5 ~ "Japanese",
+    RACE == 6 ~ "Other Asian or Pacific Islander"
+  )) |>
+  mutate(
+    HCOVPUB = ifelse(HCOVPUB == 1, "Without public health insurance coverage", "With public health insurance coverage"),
+    HCOVPRIV = ifelse(HCOVPRIV == 1, "Without private health insurance coverage", "With private health insurance coverage")
+  )
+
+```
