@@ -96,7 +96,8 @@ ggplot(df_mod, aes(x = RACE, y = public_insurance_proportion, fill = RACE)) +
 
 Data Visualization 4
 
-```{df_mod_long <- df_mod |>}
+```{r}
+df_mod_long <- df_mod |>
   pivot_longer(cols = c(private_insurance_proportion, public_insurance_proportion),
                names_to = "Insurance_Type",
                values_to = "Proportion") |>
@@ -112,6 +113,12 @@ ggplot(df_mod_long, aes(x = RACE, y = Proportion, fill = Insurance_Type, label =
   scale_fill_manual(values = c("Private" = "blue", "Public" = "red")) +
   theme_minimal() +
   theme(axis.text.x = element_text(angle = 75, hjust = 1))
+```
+```{r}
+df_main |>
+  select(PERWT) |>
+  count(PERWT)
+
 ```
 
 
