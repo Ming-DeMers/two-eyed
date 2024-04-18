@@ -166,7 +166,7 @@ ggplot(data = subset(df_mod1, !is.na(insurance_type)), aes(x = insurance_type, f
     title = "Type of Health Insurance by Race and Income in the U.S. in 2022",
     x = "Type of Insurance", 
     y = "Percentage",
-    color = "Race"
+    fill = "Race"
   )
 
 ```
