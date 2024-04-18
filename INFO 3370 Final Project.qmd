@@ -4,6 +4,8 @@ format: html
 editor: visual
 ---
 
+Load Packages
+
 ```{r}
 library(readr)
 library(haven)
@@ -11,9 +13,14 @@ library(tidyverse)
 library(scales)
 library(dplyr)
 
-df_main <- read_sav("usa_00001.sav")
+df_main <- read_sav("data/usa_00001.sav.gz")
 df_main$RACE <- as.numeric(df_main$RACE)
 
+```
+
+Data Cleaning + Preprocessing
+
+```{r}
 df_mod <- df_main |>
   filter(INCWAGE > 0) |>
   mutate(RACE = case_when(
@@ -47,7 +54,11 @@ df_median_income <- df_main |>
     RACE == 6 ~ "Other Asian or Pacific Islander"
   )) |>
   summarize(median_income = median(INCWAGE, na.rm = TRUE)) 
+```
 
+Data Visualization 1
+
+```{r}
 ggplot(df_median_income, aes(x = YEAR,y = median_income,color = RACE)) + 
   geom_line() +
   scale_y_continuous(labels = scales::dollar_format()) +
@@ -57,21 +68,35 @@ ggplot(df_median_income, aes(x = YEAR,y = median_income,color = RACE)) +
        color = "Race") +
   theme_minimal()
 
+```
+
+Data Visualization 2
+
+```{r}
 ggplot(df_mod, aes(x = RACE, y = private_insurance_proportion, fill = RACE)) +
-  geom_bar(stat = "identity") +
+  geom_bar(stat = "identity", show.legend = FALSE) +
   labs(title = "Proportion of Individuals with Private Health Insurance by Race",
        x = "Race",
        y = "Proportion",
-       fill = "Race")
+       fill = "Race") +
+  theme(axis.text.x = element_text(angle = 75, hjust = 1))
+```
 
+Data Visualization 3
+
+```{r}
 ggplot(df_mod, aes(x = RACE, y = public_insurance_proportion, fill = RACE)) +
-  geom_bar(stat = "identity") +
+  geom_bar(stat = "identity", show.legend = FALSE) +
   labs(title = "Proportion of Individuals with Public Health Insurance by Race",
        x = "Race",
        y = "Proportion",
-       fill = "Race")
+       fill = "Race") +
+  theme(axis.text.x = element_text(angle = 75, hjust = 1))
+```
 
-df_mod_long <- df_mod |>
+Data Visualization 4
+
+```{df_mod_long <- df_mod |>}
   pivot_longer(cols = c(private_insurance_proportion, public_insurance_proportion),
                names_to = "Insurance_Type",
                values_to = "Proportion") |>
@@ -88,3 +113,5 @@ ggplot(df_mod_long, aes(x = RACE, y = Proportion, fill = Insurance_Type, label =
   theme_minimal() +
   theme(axis.text.x = element_text(angle = 75, hjust = 1))
 ```
+
+
