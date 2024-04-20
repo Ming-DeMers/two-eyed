@@ -126,7 +126,7 @@ df_main |>
 library(dplyr)
 library(ggplot2)
 library(scales)
-library(Hmisc)
+#library(Hmisc)
 
 # Define income classes
 df_main_income_class <- df_main |>
@@ -170,4 +170,99 @@ ggplot(data = df_mod1, aes(x = insurance_type, fill = RACE)) +
     y = "Percentage",
     fill = "Race"
   )
+```
+
+```{r}
+
+df_main_income_class <- df_main |>
+  mutate(income_class = case_when(
+    INCWAGE <= 30000 ~ "Lower Class",
+    INCWAGE > 30000 & INCWAGE <= 94000 ~ "Middle Class",
+    INCWAGE > 94000 ~ "Upper Class",
+    TRUE ~ "Unknown"
+  ))
+
+df_mod3 <- df_main_income_class |>
+  filter(INCWAGE > 0, !is.na(YEAR) & YEAR >= 2010) |>
+  mutate(RACE = case_when(
+    RACE == 1 ~ "White",
+    RACE == 2 ~ "Black/African American",
+    RACE == 3 ~ "American Indian or Alaska Native",
+    RACE == 4 ~ "Chinese",
+    RACE == 5 ~ "Japanese",
+    RACE == 6 ~ "Other Asian or Pacific Islander",
+    TRUE ~ "Other/Unknown"  
+  )) |>
+  mutate(
+    HCOVPUB = ifelse(HCOVPUB == 1, "Public", "No Public"),
+    HCOVPRIV = ifelse(HCOVPRIV == 1, "Private", "No Private"),
+    insurance_type = case_when(
+      HCOVPUB == "Public" & HCOVPRIV == "Private" ~ "Both",
+      HCOVPUB == "Public" ~ "Public Only",
+      HCOVPRIV == "Private" ~ "Private Only",
+      TRUE ~ "No Insurance"  
+    )
+  )
+
+ggplot(data = df_mod3, aes(x = YEAR, fill = insurance_type)) +
+  geom_bar(position = "fill", stat = "count") +
+  scale_x_continuous(breaks = seq(2010, 2020, by = 5)) +  
+  scale_y_continuous(labels = scales::percent_format()) +
+  facet_grid(RACE ~ income_class, scales = "free_x", space = "free_x") +
+  theme_minimal() +
+  theme(
+    strip.text.y = element_text(angle = 0),  
+    axis.text.y = element_blank()) +
+  labs(
+    title = "Trends in Health Insurance by Race and Income in the U.S. (2010 onwards)",
+    x = "Year",
+    y = "Percentage",
+    fill = "Type of Insurance"
+  )
+```
+
+```{r}
+
+df_main_income_class <- df_main |>
+  mutate(income_class = case_when(
+    INCWAGE <= 30000 ~ "Lower Class",
+    INCWAGE > 30000 & INCWAGE <= 94000 ~ "Middle Class",
+    INCWAGE > 94000 ~ "Upper Class",
+    TRUE ~ "Unknown"
+  ))
+
+processed_ins <- df_main_income_class |>
+  filter(INCWAGE > 0, YEAR == 2022) |>
+  mutate(RACE = case_when(
+    RACE == 1 ~ "White",
+    RACE == 2 ~ "Black/African American",
+    RACE == 3 ~ "American Indian or Alaska Native",
+    RACE == 4 ~ "Chinese",
+    RACE == 5 ~ "Japanese",
+    RACE == 6 ~ "Other Asian or Pacific Islander"
+  )) |>
+  mutate(
+    HCOVPUB = ifelse(HCOVPUB == 1, "Public", "No Public"),
+    HCOVPRIV = ifelse(HCOVPRIV == 1, "Private", "No Private"),
+    insurance_type = case_when(
+      HCOVPUB == "Public" & HCOVPRIV == "Private" ~ "Both",
+      HCOVPUB == "Public" ~ "Public Only",
+      HCOVPRIV == "Private" ~ "Private Only",
+      HCOVPUB == "No Public" & HCOVPRIV == "No Private" ~ "None"
+    )
+  ) |>
+  drop_na(RACE) 
+
+ggplot(data = processed_ins, aes(x = insurance_type, fill = RACE)) +
+  geom_bar(position = "fill") +
+  scale_y_continuous(labels = scales::percent_format()) +
+  facet_grid(rows = vars(income_class)) +
+  theme_minimal() +
+  labs(
+    title = "Type of Health Insurance by Race and Income in the U.S. in 2022",
+    x = "Type of Insurance", 
+    y = "Percentage",
+    fill = "Race"
+  ) 
+
 ```
