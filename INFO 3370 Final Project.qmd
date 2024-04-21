@@ -4,7 +4,7 @@ format: html
 editor: visual
 ---
 
-Load Packages
+### Load Packages
 
 ```{r}
 library(readr)
@@ -18,115 +18,12 @@ df_main$RACE <- as.numeric(df_main$RACE)
 
 ```
 
-Data Cleaning + Preprocessing
-
-```{r}
-df_mod <- df_main |>
-  filter(INCWAGE > 0) |>
-  mutate(RACE = case_when(
-    RACE == 1 ~ "White",
-    RACE == 2 ~ "Black/African American",
-    RACE == 3 ~ "American Indian or Alaska Native",
-    RACE == 4 ~ "Chinese",
-    RACE == 5 ~ "Japanese",
-    RACE == 6 ~ "Other Asian or Pacific Islander"
-  )) |>
-  mutate(
-    HCOVPUB = ifelse(HCOVPUB == 1, "Without public health insurance coverage", "With public health insurance coverage"),
-    HCOVPRIV = ifelse(HCOVPRIV == 1, "Without private health insurance coverage", "With private health insurance coverage")
-  ) |>
-  group_by(RACE) |>
-  filter(!is.na(HCOVPUB), !is.na(HCOVPRIV)) |>
-  summarize(
-    private_insurance_proportion = sum(HCOVPRIV == "With private health insurance coverage") / n(),
-    public_insurance_proportion = sum(HCOVPUB == "With public health insurance coverage") / n()
-  )
-
-df_median_income <- df_main |>
-  group_by(RACE, YEAR) |>
-  filter(INCWAGE > 0) |>
-  mutate(RACE = case_when(
-    RACE == 1 ~ "White",
-    RACE == 2 ~ "Black/African American",
-    RACE == 3 ~ "American Indian or Alaska Native",
-    RACE == 4 ~ "Chinese",
-    RACE == 5 ~ "Japanese",
-    RACE == 6 ~ "Other Asian or Pacific Islander"
-  )) |>
-  summarize(median_income = median(INCWAGE, na.rm = TRUE)) 
-```
-
-Data Visualization 1
-
-```{r}
-ggplot(df_median_income, aes(x = YEAR,y = median_income,color = RACE)) + 
-  geom_line() +
-  scale_y_continuous(labels = scales::dollar_format()) +
-  labs(title = "Median Income by Race Over Time",
-       x = "Year",
-       y = "Median Income",
-       color = "Race") +
-  theme_minimal()
-
-```
-
-Data Visualization 2
-
-```{r}
-ggplot(df_mod, aes(x = RACE, y = private_insurance_proportion, fill = RACE)) +
-  geom_bar(stat = "identity", show.legend = FALSE) +
-  labs(title = "Proportion of Individuals with Private Health Insurance by Race",
-       x = "Race",
-       y = "Proportion",
-       fill = "Race") +
-  theme(axis.text.x = element_text(angle = 75, hjust = 1))
-```
-
-Data Visualization 3
-
-```{r}
-ggplot(df_mod, aes(x = RACE, y = public_insurance_proportion, fill = RACE)) +
-  geom_bar(stat = "identity", show.legend = FALSE) +
-  labs(title = "Proportion of Individuals with Public Health Insurance by Race",
-       x = "Race",
-       y = "Proportion",
-       fill = "Race") +
-  theme(axis.text.x = element_text(angle = 75, hjust = 1))
-```
-
-Data Visualization 4
-
-```{r}
-df_mod_long <- df_mod |>
-  pivot_longer(cols = c(private_insurance_proportion, public_insurance_proportion),
-               names_to = "Insurance_Type",
-               values_to = "Proportion") |>
-  mutate(Insurance_Type = ifelse(Insurance_Type == "private_insurance_proportion", "Private", "Public"))
-
-ggplot(df_mod_long, aes(x = RACE, y = Proportion, fill = Insurance_Type, label = scales::percent(Proportion))) +
-  geom_col() +
-  geom_text(position = position_stack(vjust = 0.5), color = "white") +
-  labs(title = "Health Insurance Proportions by Race",
-       x = "Race",
-       y = "Proportion",
-       fill = "Insurance Type") +
-  scale_fill_manual(values = c("Private" = "blue", "Public" = "red")) +
-  theme_minimal() +
-  theme(axis.text.x = element_text(angle = 75, hjust = 1))
-```
-
-```{r}
-df_main |>
-  select(PERWT) |>
-  count(PERWT)
-
-```
+### Visualization
 
 ```{r}
 library(dplyr)
 library(ggplot2)
 library(scales)
-#library(Hmisc)
 
 # Define income classes
 df_main_income_class <- df_main |>
@@ -137,6 +34,11 @@ df_main_income_class <- df_main |>
     TRUE ~ "Unknown"
   ))
 
+# Count cases dropped
+dropped_cases <- nrow(df_main) - nrow(df_main_income_class)
+print(paste("Cases dropped at defining income classes:", dropped_cases))
+
+# Filter and clean up data
 df_mod1 <- df_main_income_class |>
   filter(INCWAGE > 0, YEAR == 2022) |>
   mutate(RACE = case_when(
@@ -151,118 +53,57 @@ df_mod1 <- df_main_income_class |>
     HCOVPUB = ifelse(HCOVPUB == 1, 0, 1),
     HCOVPRIV = ifelse(HCOVPRIV == 1, 0, 1)
   ) |>
-  mutate(insurance_type = if_else(HCOVPUB == 0 & HCOVPRIV == 1, "Private",
-                                 if_else(HCOVPUB == 1 & HCOVPRIV == 0, "Public",
-                                        if_else(HCOVPUB == 1 & HCOVPRIV == 1, "Both", NA)))
+  mutate(
+    insurance_type = 
+      if_else(HCOVPUB == 0 & HCOVPRIV == 1, "Private", 
+      if_else(HCOVPUB == 1 & HCOVPRIV == 0, "Public", 
+      if_else(HCOVPUB == 1 & HCOVPRIV == 1, "Both", 
+      if_else(HCOVPUB == 0 & HCOVPRIV == 0, "None", NA))))
   ) |>
   drop_na(insurance_type) |>
   drop_na(RACE)
 
+# Count cases dropped
+dropped_cases <- nrow(df_main_income_class) - nrow(df_mod1)
+print(paste("Cases dropped at filtering step:", dropped_cases))
 
-ggplot(data = df_mod1, aes(x = insurance_type, fill = RACE)) +
-  geom_bar(position = "fill") +
+# Calculate proportions
+proportions <- df_mod1 |>
+  group_by(income_class, insurance_type, RACE) |>
+  summarize(weighted_count = sum(PERWT)) |>
+  group_by(income_class, insurance_type) |>
+  mutate(percent = round(weighted_count / sum(weighted_count), 4))
+
+# Count cases dropped
+dropped_cases <- nrow(df_mod1) - nrow(proportions)
+print(paste("Cases dropped at summarizing step:", dropped_cases))
+
+# Create bar chart visualization
+ggplot(data = proportions, aes(x = insurance_type, y = percent, fill = RACE)) +
+  geom_bar(position = "fill", stat = "identity") +
+  geom_text(aes(label = scales::percent(percent), y = percent + 0.02), 
+            position = position_fill(vjust = 0.5), size = 2) + 
   scale_y_continuous(labels = scales::percent) +
   facet_grid(rows = vars(income_class)) +
   theme_minimal() +
   labs(
-    title = "Type of Health Insurance by Race and Income in the U.S. in 2022",
-    x = "Type of Insurance", 
+    title = "Type of Health Insurance by Race and Income in New York State in 2022",
+    x = "Type of Health Insurance", 
     y = "Percentage",
     fill = "Race"
   )
 ```
 
-```{r}
+### Write-Up
 
-df_main_income_class <- df_main |>
-  mutate(income_class = case_when(
-    INCWAGE <= 30000 ~ "Lower Class",
-    INCWAGE > 30000 & INCWAGE <= 94000 ~ "Middle Class",
-    INCWAGE > 94000 ~ "Upper Class",
-    TRUE ~ "Unknown"
-  ))
+Our research question is: How do income and racial inequality impact access to healthcare services? Understanding this question is essential for advancing social justice and improving public health outcomes. Addressing this query can help identify and confront barriers to access, which can lead to better health outcomes for entire communities and populations. Additionally, findings can inform evidence-based policies aimed at reducing healthcare disparities, ultimately creating a more equitable healthcare system. Furthermore, improving access to healthcare can have economic benefits, including increased productivity and reduced healthcare costs.
 
-df_mod3 <- df_main_income_class |>
-  filter(INCWAGE > 0, !is.na(YEAR) & YEAR >= 2010) |>
-  mutate(RACE = case_when(
-    RACE == 1 ~ "White",
-    RACE == 2 ~ "Black/African American",
-    RACE == 3 ~ "American Indian or Alaska Native",
-    RACE == 4 ~ "Chinese",
-    RACE == 5 ~ "Japanese",
-    RACE == 6 ~ "Other Asian or Pacific Islander",
-    TRUE ~ "Other/Unknown"  
-  )) |>
-  mutate(
-    HCOVPUB = ifelse(HCOVPUB == 1, "Public", "No Public"),
-    HCOVPRIV = ifelse(HCOVPRIV == 1, "Private", "No Private"),
-    insurance_type = case_when(
-      HCOVPUB == "Public" & HCOVPRIV == "Private" ~ "Both",
-      HCOVPUB == "Public" ~ "Public Only",
-      HCOVPRIV == "Private" ~ "Private Only",
-      TRUE ~ "No Insurance"  
-    )
-  )
+To analyze our research question, our unit of analysis is individual people in New York state and our target population is all individuals residing within the geographic boundaries of New York State. This includes people of all ages, genders, races, ethnicities, socioeconomic statuses, and health conditions who are currently living in New York state. We obtained data from IPUMS USA, which gathers microdata from U.S. censuses and encompasses decennial census records spanning from 1790 to 2010, as well as American Community Surveys (ACS) conducted from 2000 onwards. To analyze our research question in a relevant time frame and our desired location, we only examined data from the year 2022 and within New York state.
 
-ggplot(data = df_mod3, aes(x = YEAR, fill = insurance_type)) +
-  geom_bar(position = "fill", stat = "count") +
-  scale_x_continuous(breaks = seq(2010, 2020, by = 5)) +  
-  scale_y_continuous(labels = scales::percent_format()) +
-  facet_grid(RACE ~ income_class, scales = "free_x", space = "free_x") +
-  theme_minimal() +
-  theme(
-    strip.text.y = element_text(angle = 0),  
-    axis.text.y = element_blank()) +
-  labs(
-    title = "Trends in Health Insurance by Race and Income in the U.S. (2010 onwards)",
-    x = "Year",
-    y = "Percentage",
-    fill = "Type of Insurance"
-  )
-```
+In our visualization to investigate our research question, we use a few predictors. Our first predictor is "Income Class", which we categorize into three classes: "Lower Class", "Middle Class", and "Upper Class." To determine these income class categories, we used the `INCWAGE` variable from our data set, which reports each census respondent's total pre-tax wage and salary income, and divided the incomes into "Lower Class" if the individual had an income of \$30,000 or less, "Middle Class" if the individual had an income greater than \$30,000 but less than or equal to \$94,000, and "Upper Class" if the individual had an income greater than \$94,000. We obtained these income boundaries from the Census Bureau’s "Income in the United States: 2022" report. Our second predictor is "Race," which we obtained from our data set's `RACE` variable to be categorized as "White", "Black/African American", "American Indian or Alaska Native", "Chinese", "Japanese", and "Other Asian or Pacific Islander." The outcome variable in our visualization is "Type of Health Insurance" which we classified as "Private", "Public", "Both" or "None." These were determined from our data set's variables `HCOVPUB` (public health coverage) and `HCOVPRIV` (private health coverage). We use this outcome variable to represent health care access because health insurance coverage serves as a practical proxy for access, reflecting financial barriers and influencing individuals' utilization of health services. Disparities in insurance coverage by income and race can highlight underlying mechanisms contributing to unequal access. By examining these intersections, we gain insight into how socioeconomic factors shape individuals' ability to obtain and utilize health care services.
 
-```{r}
+The following details our sample restrictions: Initially, individuals are categorized into income classes based on their wage income (`INCWAGE`), with "Lower Class" for incomes less than or equal to \$30,000, "Middle Class" for incomes between \$30,000 and \$94,000, and "Upper Class" for incomes exceeding \$94,000. Cases with missing or undefined income values are labeled as "Unknown". No cases were dropped after this step. Subsequently, the data is filtered to include observations with positive income values and belonging to the year 2022. Additionally, the racial variable (`RACE`) is recoded into more interpretable labels, and binary indicators (`HCOVPUB` and `HCOVPRIV`) for public and private health insurance coverage are created. The `insurance_type` variable is then derived based on combinations of these indicators, indicating whether individuals have private, public, both, or no health insurance. Observations with missing values in `insurance_type` or `RACE` are subsequently removed from the dataset. This resulted in 1539577 cases being dropped. Additionally, to include percentages in the visualization, percentages were calculated as the weighted count of individuals (weighted by the `PERWT` variable in our data set) divided by the total weighted count of individuals in each income class, insurance type, and race group. The separate summary data set from this resulted in 38323 cases being dropped.
 
-df_main_income_class <- df_main |>
-  mutate(income_class = case_when(
-    INCWAGE <= 30000 ~ "Lower Class",
-    INCWAGE > 30000 & INCWAGE <= 94000 ~ "Middle Class",
-    INCWAGE > 94000 ~ "Upper Class",
-    TRUE ~ "Unknown"
-  ))
+In our visualization, the summary statistic we use is the percentage/proportion of individuals within each combination of income class and insurance type group, broken down by race. So, for each combination of income class and insurance type, the percentage represents the proportion of a given race within that group relative to the total population of individuals in that income class and insurance type. This allows for a comparison of the distribution of health insurance types across different income classes and racial groups, while accounting for the survey weights.
 
-processed_ins <- df_main_income_class |>
-  filter(INCWAGE > 0, YEAR == 2022) |>
-  mutate(RACE = case_when(
-    RACE == 1 ~ "White",
-    RACE == 2 ~ "Black/African American",
-    RACE == 3 ~ "American Indian or Alaska Native",
-    RACE == 4 ~ "Chinese",
-    RACE == 5 ~ "Japanese",
-    RACE == 6 ~ "Other Asian or Pacific Islander"
-  )) |>
-  mutate(
-    HCOVPUB = ifelse(HCOVPUB == 1, "Public", "No Public"),
-    HCOVPRIV = ifelse(HCOVPRIV == 1, "Private", "No Private"),
-    insurance_type = case_when(
-      HCOVPUB == "Public" & HCOVPRIV == "Private" ~ "Both",
-      HCOVPUB == "Public" ~ "Public Only",
-      HCOVPRIV == "Private" ~ "Private Only",
-      HCOVPUB == "No Public" & HCOVPRIV == "No Private" ~ "None"
-    )
-  ) |>
-  drop_na(RACE) 
-
-ggplot(data = processed_ins, aes(x = insurance_type, fill = RACE)) +
-  geom_bar(position = "fill") +
-  scale_y_continuous(labels = scales::percent_format()) +
-  facet_grid(rows = vars(income_class)) +
-  theme_minimal() +
-  labs(
-    title = "Type of Health Insurance by Race and Income in the U.S. in 2022",
-    x = "Type of Insurance", 
-    y = "Percentage",
-    fill = "Race"
-  ) 
-
-```
+Our visualization shows that across all income classes, people of the White race represent the highest proportion of private health insurance holders. We can see that within "Upper Class" individuals that have private health insurance, over half (64.350%) of those individuals are "White." Additionally, within "Lower Class" individuals that have public health insurance, "Black/African Americans" represent the greatest proportion (35.970%). It is also interesting to note that "Japanese" individuals represent the smallest proportion across all groups of health insurance and income classes. Furthermore, the groups that represent the largest proportions across all income and health insurance category combinations are "White" and "Black/African American" individuals. This data suggests that income and racial inequalities significantly influence access to health care services, with disparities evident in health insurance coverage among different demographic groups.
