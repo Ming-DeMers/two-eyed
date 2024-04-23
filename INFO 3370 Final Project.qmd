@@ -1,6 +1,6 @@
 ---
 title: "INFO 3370 Final Project"
-format: html
+format: pdf
 editor: visual
 fig-width: 10
 fig-height: 8
@@ -143,6 +143,8 @@ health_22_prop_bar <- ggplot(data = health_22_prop, aes(x = insurance_type, y = 
   facet_wrap(~income_class) +
   theme_minimal() +
   theme(legend.position = "bottom") +
+  geom_text(aes(label = scales::percent(percent), y = percent + 0.02), 
+            position = position_fill(vjust = 0.5), size = 2) + 
   labs(
     title = "Type of Health Insurance by Race and Income in New York State in 2022",
     x = "Type of Health Insurance", 
@@ -150,8 +152,7 @@ health_22_prop_bar <- ggplot(data = health_22_prop, aes(x = insurance_type, y = 
     fill = "Race"
   )
 
-ggplotly(health_22_prop_bar) |>
-  layout(autosize = T, height = 500, width = 900)
+health_22_prop_bar
 
 ```
 
