@@ -106,7 +106,7 @@ health |>
   theme_minimal() +
   labs(
     title = "Healthcare Attrition in New York State",
-    subtitle = "From 2008 - 2020, more American's have elected to be covered by healthcare insurance",
+    subtitle = "More American's have elected to be covered by healthcare",
     x = "Year",
     y = "",
     color = "Insurance",
@@ -136,7 +136,8 @@ health_prop |>
 
 ```{r}
 # Create bar chart visualization
-health_22_prop_bar <- ggplot(data = health_22_prop, aes(x = insurance_type, y = percent, 
+health_22_prop_bar <- ggplot(data = health_22_prop, aes(x = insurance_type, 
+                                                        y = percent, 
                                   fill = RACE)) +
   geom_bar(position = "fill", stat = "identity") +
   scale_y_continuous(labels = scales::percent) +
@@ -146,7 +147,7 @@ health_22_prop_bar <- ggplot(data = health_22_prop, aes(x = insurance_type, y = 
   geom_text(aes(label = scales::percent(percent), y = percent + 0.02), 
             position = position_fill(vjust = 0.5), size = 2) + 
   labs(
-    title = "Type of Health Insurance by Race and Income in New York State in 2022",
+    title = "Health Insurance by Race and Income, New York State in 2022",
     x = "Type of Health Insurance", 
     y = "Percentage",
     fill = "Race"
