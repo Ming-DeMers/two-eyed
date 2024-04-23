@@ -2,6 +2,8 @@
 title: "INFO 3370 Final Project"
 format: html
 editor: visual
+fig-width: 10
+fig-height: 8
 ---
 
 ### Load Packages
@@ -12,6 +14,8 @@ library(haven)
 library(tidyverse)
 library(scales)
 library(dplyr)
+library(tidylog)
+library(plotly)
 
 df_main <- read_sav("data/usa_00001.sav.gz")
 df_main$RACE <- as.numeric(df_main$RACE)
@@ -21,10 +25,6 @@ df_main$RACE <- as.numeric(df_main$RACE)
 ### Visualization
 
 ```{r}
-library(dplyr)
-library(ggplot2)
-library(scales)
-
 # Define income classes
 df_main_income_class <- df_main |>
   mutate(income_class = case_when(
@@ -34,20 +34,15 @@ df_main_income_class <- df_main |>
     TRUE ~ "Unknown"
   ))
 
-# Count cases dropped
-dropped_cases <- nrow(df_main) - nrow(df_main_income_class)
-print(paste("Cases dropped at defining income classes:", dropped_cases))
-
 # Filter and clean up data
-df_mod1 <- df_main_income_class |>
-  filter(INCWAGE > 0, YEAR == 2022) |>
+health <- df_main_income_class |>
   mutate(RACE = case_when(
     RACE == 1 ~ "White",
     RACE == 2 ~ "Black/African American",
     RACE == 3 ~ "American Indian or Alaska Native",
     RACE == 4 ~ "Chinese",
     RACE == 5 ~ "Japanese",
-    RACE == 6 ~ "Other Asian or Pacific Islander"
+    RACE == 6 ~ "Other Asian or Pacific Islander",
   )) |>
   mutate(
     HCOVPUB = ifelse(HCOVPUB == 1, 0, 1),
@@ -58,40 +53,96 @@ df_mod1 <- df_main_income_class |>
       if_else(HCOVPUB == 0 & HCOVPRIV == 1, "Private", 
       if_else(HCOVPUB == 1 & HCOVPRIV == 0, "Public", 
       if_else(HCOVPUB == 1 & HCOVPRIV == 1, "Both", 
-      if_else(HCOVPUB == 0 & HCOVPRIV == 0, "None", NA))))
-  ) |>
+      if_else(HCOVPUB == 0 & HCOVPRIV == 0, "None", NA)))) 
+  )
+
+health_prop <- health |>
+  filter(insurance_type != "None") |>
+  drop_na(income_class, insurance_type, RACE, YEAR) |>
+  group_by(income_class, RACE, YEAR) |>
+  summarize(weighted_count = sum(PERWT))
+
+#  group_by(income_class, insurance_type, YEAR) |>
+#  mutate(percent = round(weighted_count / sum(weighted_count), 4))
+
+health_22 <- health |>
+  filter(INCWAGE > 0, YEAR == 2022) |>
   drop_na(insurance_type) |>
   drop_na(RACE)
 
-# Count cases dropped
-dropped_cases <- nrow(df_main_income_class) - nrow(df_mod1)
-print(paste("Cases dropped at filtering step:", dropped_cases))
 
 # Calculate proportions
-proportions <- df_mod1 |>
+health_22_prop <- health_22 |>
   group_by(income_class, insurance_type, RACE) |>
   summarize(weighted_count = sum(PERWT)) |>
   group_by(income_class, insurance_type) |>
   mutate(percent = round(weighted_count / sum(weighted_count), 4))
 
-# Count cases dropped
-dropped_cases <- nrow(df_mod1) - nrow(proportions)
-print(paste("Cases dropped at summarizing step:", dropped_cases))
+```
 
-# Create bar chart visualization
-ggplot(data = proportions, aes(x = insurance_type, y = percent, fill = RACE)) +
-  geom_bar(position = "fill", stat = "identity") +
-  geom_text(aes(label = scales::percent(percent), y = percent + 0.02), 
-            position = position_fill(vjust = 0.5), size = 2) + 
-  scale_y_continuous(labels = scales::percent) +
-  facet_grid(rows = vars(income_class)) +
+```{r}
+
+health |>
+  drop_na(insurance_type) |>
+  group_by(YEAR, insurance_type) |>
+  summarize (count = n()) |>
+  ggplot(aes(YEAR, count, color = insurance_type, group = insurance_type)) +
+  geom_line() +
+  scale_y_continuous(label = comma) +
+  theme(legend.position = "bottom") +
   theme_minimal() +
+  labs(
+    title = "Healthcare Attrition in the US",
+    subtitle = "From 2008 - 2020, more American's have elected to be covered by healthcare insurance",
+    x = "Year",
+    y = "",
+    color = "Insurance",
+    caption = "Source: IPUMS Current Population Study"
+  )
+
+health_prop |>
+  ggplot(aes(YEAR, weighted_count, color = RACE, group = RACE)) +
+  geom_line() +
+  facet_wrap(~income_class) +
+  scale_y_continuous(label = comma) +
+  theme_minimal() +
+    theme(legend.position = "bottom") +
+  labs(
+    title = "Lower Class White Americans Have the Most Insurance",
+    subtitle = "From 2008 - 2020",
+    x = "Year",
+    y = "",
+    color = "Race",
+    caption = "Source: IPUMS Current Population Study"
+  )
+
+
+```
+
+```{r}
+
+
+```
+
+```{r}
+# Create bar chart visualization
+health_22_prop_bar <- ggplot(data = health_22_prop, aes(x = insurance_type, y = percent, 
+                                  fill = RACE)) +
+  geom_bar(position = "fill", stat = "identity") +
+  scale_y_continuous(labels = scales::percent) +
+  facet_wrap(~income_class) +
+  theme_minimal() +
+  theme(legend.position = "bottom") +
   labs(
     title = "Type of Health Insurance by Race and Income in New York State in 2022",
     x = "Type of Health Insurance", 
     y = "Percentage",
     fill = "Race"
   )
+
+ggplotly(health_22_prop_bar) |>
+  layout(autosize = T, height = 500, width = 900)
+
 ```
 
 ### Write-Up
