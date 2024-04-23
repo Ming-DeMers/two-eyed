@@ -6,7 +6,9 @@ fig-width: 10
 fig-height: 8
 ---
 
-### Load Packages
+## Code
+
+### Import and Setup
 
 ```{r}
 library(readr)
@@ -14,7 +16,6 @@ library(haven)
 library(tidyverse)
 library(scales)
 library(dplyr)
-library(tidylog)
 library(plotly)
 
 df_main <- read_sav("data/usa_00001.sav.gz")
@@ -22,7 +23,7 @@ df_main$RACE <- as.numeric(df_main$RACE)
 
 ```
 
-### Visualization
+### Data Cleaning
 
 ```{r}
 # Define income classes
@@ -56,11 +57,22 @@ health <- df_main_income_class |>
       if_else(HCOVPUB == 0 & HCOVPRIV == 0, "None", NA)))) 
   )
 
+# Count cases dropped
+dropped_cases <- nrow(df_main) - nrow(df_main_income_class)
+print(paste("Cases dropped at defining income classes:", dropped_cases))
+
+dropped_cases <- nrow(df_main_income_class) - nrow(health)
+print(paste("Cases dropped at filtering step:", dropped_cases))
+
 health_prop <- health |>
   filter(insurance_type != "None") |>
   drop_na(income_class, insurance_type, RACE, YEAR) |>
   group_by(income_class, RACE, YEAR) |>
   summarize(weighted_count = sum(PERWT))
+
+# Count cases dropped
+dropped_cases <- nrow(health) - nrow(health_prop)
+print(paste("Cases dropped at summarizing step:", dropped_cases))
 
 #  group_by(income_class, insurance_type, YEAR) |>
 #  mutate(percent = round(weighted_count / sum(weighted_count), 4))
@@ -79,6 +91,7 @@ health_22_prop <- health_22 |>
   mutate(percent = round(weighted_count / sum(weighted_count), 4))
 
 ```
+### Visualization on Trends
 
 ```{r}
 
@@ -92,7 +105,7 @@ health |>
   theme(legend.position = "bottom") +
   theme_minimal() +
   labs(
-    title = "Healthcare Attrition in the US",
+    title = "Healthcare Attrition in New York State",
     subtitle = "From 2008 - 2020, more American's have elected to be covered by healthcare insurance",
     x = "Year",
     y = "",
@@ -108,7 +121,7 @@ health_prop |>
   theme_minimal() +
     theme(legend.position = "bottom") +
   labs(
-    title = "Lower Class White Americans Have the Most Insurance",
+    title = "Lower Class White NYers Have the Most Insurance",
     subtitle = "From 2008 - 2020",
     x = "Year",
     y = "",
@@ -119,10 +132,7 @@ health_prop |>
 
 ```
 
-```{r}
-
-
-```
+### Final Visualization
 
 ```{r}
 # Create bar chart visualization
@@ -145,15 +155,25 @@ ggplotly(health_22_prop_bar) |>
 
 ```
 
-### Write-Up
+## Write-Up
 
-Our research question is: How do income and racial inequality impact access to healthcare services? Understanding this question is essential for advancing social justice and improving public health outcomes. Addressing this query can help identify and confront barriers to access, which can lead to better health outcomes for entire communities and populations. Additionally, findings can inform evidence-based policies aimed at reducing healthcare disparities, ultimately creating a more equitable healthcare system. Furthermore, improving access to healthcare can have economic benefits, including increased productivity and reduced healthcare costs.
+### Introduction
 
-To analyze our research question, our unit of analysis is individual people in New York state and our target population is all individuals residing within the geographic boundaries of New York State. This includes people of all ages, genders, races, ethnicities, socioeconomic statuses, and health conditions who are currently living in New York state. We obtained data from IPUMS USA, which gathers microdata from U.S. censuses and encompasses decennial census records spanning from 1790 to 2010, as well as American Community Surveys (ACS) conducted from 2000 onwards. To analyze our research question in a relevant time frame and our desired location, we only examined data from the year 2022 and within New York state.
+How do income and racial inequality impact access to healthcare services? Understanding this question is essential for advancing social justice and improving public health outcomes. Addressing this query can help identify and confront barriers to access, which can lead to better health outcomes for entire communities and populations. Additionally, findings can inform evidence-based policies aimed at reducing healthcare disparities, ultimately creating a more equitable healthcare system. Furthermore, improving access to healthcare can have economic benefits, including increased productivity and reduced healthcare costs.
+
+### The Data
+
+To analyze our research question, our unit of analysis is individual people in New York state and our target population is all individuals residing within the geographic boundaries of New York State. This includes people of all ages, genders, races, ethnicities, socioeconomic statuses, and health conditions who are currently living in New York state. We obtained data from IPUMS USA, which gathers microdata from U.S. censuses and encompasses decennial census records spanning from 1790 to 2010, as well as American Community Surveys (ACS) conducted from 2000 onwards. To analyze our research question in a relevant time frame and our desired location, we only examined data from the year 2022 and within New York state. This data intends to represents the population of New York state in 2022, providing a snapshot of the health and socioeconomic characteristics of individuals residing in the state during that year.
+
+### Predictors and Outcome
 
 In our visualization to investigate our research question, we use a few predictors. Our first predictor is "Income Class", which we categorize into three classes: "Lower Class", "Middle Class", and "Upper Class." To determine these income class categories, we used the `INCWAGE` variable from our data set, which reports each census respondent's total pre-tax wage and salary income, and divided the incomes into "Lower Class" if the individual had an income of \$30,000 or less, "Middle Class" if the individual had an income greater than \$30,000 but less than or equal to \$94,000, and "Upper Class" if the individual had an income greater than \$94,000. We obtained these income boundaries from the Census Bureau’s "Income in the United States: 2022" report. Our second predictor is "Race," which we obtained from our data set's `RACE` variable to be categorized as "White", "Black/African American", "American Indian or Alaska Native", "Chinese", "Japanese", and "Other Asian or Pacific Islander." The outcome variable in our visualization is "Type of Health Insurance" which we classified as "Private", "Public", "Both" or "None." These were determined from our data set's variables `HCOVPUB` (public health coverage) and `HCOVPRIV` (private health coverage). We use this outcome variable to represent health care access because health insurance coverage serves as a practical proxy for access, reflecting financial barriers and influencing individuals' utilization of health services. Disparities in insurance coverage by income and race can highlight underlying mechanisms contributing to unequal access. By examining these intersections, we gain insight into how socioeconomic factors shape individuals' ability to obtain and utilize health care services.
 
-The following details our sample restrictions: Initially, individuals are categorized into income classes based on their wage income (`INCWAGE`), with "Lower Class" for incomes less than or equal to \$30,000, "Middle Class" for incomes between \$30,000 and \$94,000, and "Upper Class" for incomes exceeding \$94,000. Cases with missing or undefined income values are labeled as "Unknown". No cases were dropped after this step. Subsequently, the data is filtered to include observations with positive income values and belonging to the year 2022. Additionally, the racial variable (`RACE`) is recoded into more interpretable labels, and binary indicators (`HCOVPUB` and `HCOVPRIV`) for public and private health insurance coverage are created. The `insurance_type` variable is then derived based on combinations of these indicators, indicating whether individuals have private, public, both, or no health insurance. Observations with missing values in `insurance_type` or `RACE` are subsequently removed from the dataset. This resulted in 1539577 cases being dropped. Additionally, to include percentages in the visualization, percentages were calculated as the weighted count of individuals (weighted by the `PERWT` variable in our data set) divided by the total weighted count of individuals in each income class, insurance type, and race group. The separate summary data set from this resulted in 38323 cases being dropped.
+### Data Cleaning and Sample Restrictions
+
+Initially, individuals are categorized into income classes based on their wage income (`INCWAGE`), with "Lower Class" for incomes less than or equal to \$30,000, "Middle Class" for incomes between \$30,000 and \$94,000, and "Upper Class" for incomes exceeding \$94,000. Cases with missing or undefined income values are labeled as "Unknown". No cases were dropped after this step. Subsequently, the data is filtered to include observations with positive income values and belonging to the year 2022. Additionally, the racial variable (`RACE`) is recoded into more interpretable labels, and binary indicators (`HCOVPUB` and `HCOVPRIV`) for public and private health insurance coverage are created. The `insurance_type` variable is then derived based on combinations of these indicators, indicating whether individuals have private, public, both, or no health insurance. Observations with missing values in `insurance_type` or `RACE` are subsequently removed from the dataset. This resulted in 1539577 cases being dropped. Additionally, to include percentages in the visualization, percentages were calculated as the weighted count of individuals (weighted by the `PERWT` variable in our data set) divided by the total weighted count of individuals in each income class, insurance type, and race group. The separate summary data set from this resulted in 38323 cases being dropped.
+
+### Analysis
 
 In our visualization, the summary statistic we use is the percentage/proportion of individuals within each combination of income class and insurance type group, broken down by race. So, for each combination of income class and insurance type, the percentage represents the proportion of a given race within that group relative to the total population of individuals in that income class and insurance type. This allows for a comparison of the distribution of health insurance types across different income classes and racial groups, while accounting for the survey weights.
 
